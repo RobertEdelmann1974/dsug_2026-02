@@ -1,0 +1,16 @@
+customProperties:"formComponent:false,\
+useCssPosition:true",
+encapsulation:108,
+items:[
+{
+height:480,
+partType:5,
+typeid:19,
+uuid:"DFEF2116-2447-4DDC-A022-77413BE1485C"
+}
+],
+name:"paperless_getDocuments",
+navigatorID:"-1",
+showInMenu:true,
+typeid:3,
+uuid:"7D2033B8-0D4E-421D-897B-C876BB254BD5"
