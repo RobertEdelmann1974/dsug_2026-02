@@ -25,6 +25,4 @@ function onAction_buttonToken(event) {
 			// show message
 		}
 	}
-	
-
 }

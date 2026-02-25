@@ -29,6 +29,11 @@ text:"Configuration"
 containedForm:"7D2033B8-0D4E-421D-897B-C876BB254BD5",
 svyUUID:"422FF467-D5B7-4732-A14A-2B2BB808AB17",
 text:"Get Documents"
+},
+{
+containedForm:"20C51DEB-F398-4406-B95F-987F75C339D5",
+svyUUID:"4A7C6D7F-FD0C-477D-B0D4-5BE62A69D1E3",
+text:"Master Data"
 }
 ]
 },

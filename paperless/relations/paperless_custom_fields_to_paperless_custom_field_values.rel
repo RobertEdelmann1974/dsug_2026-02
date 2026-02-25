@@ -1,0 +1,10 @@
+allowCreationRelatedRecords:true,
+foreignDataSource:"mem:paperless_custom_field_values",
+items:[
+{foreignColumnName:"paperless_field_id",primaryDataProviderID:"id",typeid:23,uuid:"FF683931-AA71-41E0-BC09-D7121BB2B8B8"}
+],
+joinType:1,
+name:"paperless_custom_fields_to_paperless_custom_field_values",
+primaryDataSource:"mem:paperless_custom_fields",
+typeid:22,
+uuid:"8031EA05-F6E7-4DE8-80CC-CAB7A7C575C7"
