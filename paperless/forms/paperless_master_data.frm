@@ -41,7 +41,26 @@ typeid:19,
 uuid:"3B17F8E4-FF38-4605-AA5B-705F059316B2"
 },
 {
-cssPosition:"50%,0,0,0,200,100",
+cssPosition:"15,-1,-1,15,160,30",
+json:{
+cssPosition:{
+bottom:"-1",
+height:"30",
+left:"15",
+right:"-1",
+top:"15",
+width:"160"
+},
+onActionMethodID:"F0C76EA2-F542-49D0-AF1B-80429426907D",
+text:"download data"
+},
+name:"button_10",
+typeName:"bootstrapcomponents-button",
+typeid:47,
+uuid:"8E9C28E4-BA21-44BC-A126-1D1F635C54E7"
+},
+{
+cssPosition:"51%,0,0,0,200,100",
 json:{
 containedForm:"0E8D3BA5-299D-47D1-AEC5-5691E0F5ED0E",
 cssPosition:{
@@ -49,7 +68,7 @@ bottom:"0",
 height:"100",
 left:"0",
 right:"0",
-top:"50%",
+top:"51%",
 width:"200"
 },
 relationName:"paperless_custom_fields_to_paperless_custom_field_values"

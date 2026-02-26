@@ -101,6 +101,46 @@ var customFieldsPaperless = new Map();
 var customFieldsPaperlessId = new Map();
 
 /**
+ * @type {Map<>}
+ * @properties={typeid:35,uuid:"7A704705-E827-4425-B60A-5D312527699A",variableType:-4}
+ */
+var tags = new Map()
+
+/**
+ * @type {Map<>}
+ *
+ * @properties={typeid:35,uuid:"FFAB1870-8F44-4AE1-AF05-CA99AE24BE68",variableType:-4}
+ */
+var tagsId = new Map()
+
+/**
+ * @type {Map<>}
+ * @properties={typeid:35,uuid:"C3FBA9AC-C282-44E8-B003-91C30D3C31ED",variableType:-4}
+ */
+var correspondents = new Map()
+
+/**
+ * @type {Map<>}
+ *
+ * @properties={typeid:35,uuid:"8E87F32D-C1E9-486D-A178-C20E969BF602",variableType:-4}
+ */
+var correspondentsId = new Map()
+
+/**
+ * @type {Map<>}
+ * @properties={typeid:35,uuid:"10FBB206-D2B2-45E6-829F-1FFA2D5C3926",variableType:-4}
+ */
+var documenttypes = new Map()
+
+/**
+ * @type {Map<>}
+ *
+ * @properties={typeid:35,uuid:"B353FD77-A7DC-4434-B0A8-191B055426D5",variableType:-4}
+ */
+var documenttypesId = new Map()
+
+
+/**
  * @properties={typeid:24,uuid:"A0966F53-91CA-4F39-A233-490FCE9D8D7A"}
  */
 function setHTTPConfig() {
@@ -248,7 +288,7 @@ function parseCustomFields(listFields) {
  * @properties={typeid:24,uuid:"3AFA94B7-3E58-4136-9537-5804EB49987E"}
  */
 function fetchDocument(documentId) {
-	if (!httpConfig) {
+	if (!httpConfig) { 
 		setHTTPConfig();
 	}
 	if (!documentId) {
@@ -391,4 +431,649 @@ function downloadCustomFieldsPaperless() {
 	httpClient.close();
 }
 
+/**
+ * @properties={typeid:24,uuid:"CA6782B5-A341-456A-8640-F3E0A2EB1D8F"}
+ */
+function uploadAllCorrespondets() {
+	downloadCorrespondents();
+	var fsFirmen = datasources.mem.correspondents.getFoundSet();
+	fsFirmen.loadAllRecords();
+	var recordFirmen;
+	for (var iFirmen = 1; iFirmen <= fsFirmen.getSize(); iFirmen++) {
+		recordFirmen = fsFirmen.getRecord(iFirmen)
+		if (correspondents.has(recordFirmen.name + ', ' + recordFirmen.city)) {
+			continue;
+		}
+		uploadCorrespondet(recordFirmen.name + ', ' + recordFirmen.city);
+	}
+}
 
+
+/**
+ * upload correspondent to paperless
+ * @param {String} firmenName
+ *
+ * @properties={typeid:24,uuid:"841D00B8-AFEE-420C-97EE-E2368CD5A03A"}
+ */
+function uploadCorrespondet(firmenName) {
+	if (!firmenName) {
+		return;
+	}
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+	var objectCorrespondent = {
+	    "name": firmenName,
+	    "match": firmenName,
+	    "matching_algorithm": 6,
+	    "is_insensitive": true,
+	    "owner": null,
+	    "set_permissions": {}
+	};
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var url = paperlessServerUrl + ENDPOINTS.correspondents;
+	var request = httpClient.createPostRequest(url);
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	request.addHeader('Content-Type', 'application/json');
+	request.setBodyContent(JSON.stringify(objectCorrespondent));
+	var response = getResponse(request);
+	httpClient.close();
+	if (!response) {
+		return;
+	}
+	var responseObject = JSON.parse(response);
+	if (responseObject && responseObject.hasOwnProperty('id')) {
+		/** @type {Number} */
+		var id = responseObject['id'];
+		correspondents.set(objectCorrespondent.name,id);
+		correspondentsId.set(id, objectCorrespondent.name);
+//		logger.debug('corespondent mit id: ' + id.toString() + ' erstellt.');
+	}
+}
+
+/**
+ * @properties={typeid:24,uuid:"20CC41B9-1F8D-4D9B-B8C0-B1E769339DD6"}
+ */
+function downloadCorrespondents() {
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var url = paperlessServerUrl + ENDPOINTS.correspondents;
+	var request = httpClient.createGetRequest(url);
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	var response = getResponse(request);
+	if (response) {
+		correspondents = new Map();
+		correspondentsId = new Map();
+		var nextURL = null;
+		do {
+			var responseObject = JSON.parse(response);
+			if (responseObject.hasOwnProperty('next')) {
+				nextURL = responseObject['next'];
+			}
+			if (responseObject.hasOwnProperty('count') && responseObject['count'] != 0 && responseObject.hasOwnProperty('results')) {
+				/** @type {Array<{id: Number, slug: String, name: String}>} */
+				var correspondentObject = responseObject['results']
+				for (var iCorr = 0; iCorr < correspondentObject.length; iCorr++) {
+					correspondents.set(correspondentObject[iCorr].name, correspondentObject[iCorr].id)
+					correspondentsId.set(correspondentObject[iCorr].id, correspondentObject[iCorr].name)
+					logger.debug(correspondentObject[iCorr].name);
+				}
+			}
+			if (nextURL) {
+				request = httpClient.createGetRequest(nextURL);
+				request.addHeader('Authorization', 'Token ' + paperlessToken);
+				response = getResponse(request);
+				if (!response) {
+					nextURL = null;
+				}
+			}
+		} while (nextURL);
+	}
+	httpClient.close();
+}
+
+/**
+ * @properties={typeid:24,uuid:"C756D133-7987-436C-91E4-2A23C7199B70"}
+ */
+function downloadTags() {
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var url = paperlessServerUrl + ENDPOINTS.tags;
+	var request = httpClient.createGetRequest(url);
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	var response = getResponse(request);
+	if (response) {
+		tags = new Map();
+		tagsId = new Map();
+		var nextURL = null;
+		do {
+			var responseObject = JSON.parse(response);
+			if (responseObject.hasOwnProperty('next')) {
+				nextURL = responseObject['next'];
+			}
+			if (responseObject.hasOwnProperty('count') && responseObject['count'] != 0 && responseObject.hasOwnProperty('results')) {
+				/** @type {Array<{id: Number, slug: String, name: String}>} */
+				var tagsObject = responseObject['results']
+				for (var iTags = 0; iTags < tagsObject.length; iTags++) {
+					tags.set(tagsObject[iTags].name, tagsObject[iTags].id)
+					tagsId.set(tagsObject[iTags].id, tagsObject[iTags].name)
+				}
+			}
+			if (nextURL) {
+				request = httpClient.createGetRequest(nextURL);
+				request.addHeader('Authorization', 'Token ' + paperlessToken);
+				response = getResponse(request);
+				if (!response) {
+					nextURL = null;
+				}
+			}
+		} while (nextURL);
+	}
+	httpClient.close();
+}
+
+/**
+ * @properties={typeid:24,uuid:"9BDFE34D-A849-4294-ABF0-CF3A2315C5F8"}
+ */
+function downloadDocTypes() {
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var url = paperlessServerUrl + ENDPOINTS.document_types;
+	var request = httpClient.createGetRequest(url);
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	var response = getResponse(request);
+	if (response) {
+		documenttypes =  new Map();
+		documenttypesId =  new Map();
+		var nextURL = null;
+		do {
+			var responseObject = JSON.parse(response);
+			if (responseObject.hasOwnProperty('next')) {
+				nextURL = responseObject['next'];
+			}
+			if (responseObject.hasOwnProperty('count') && responseObject['count'] != 0 && responseObject.hasOwnProperty('results')) {
+				/** @type {Array<{id: Number, slug: String, name: String}>} */
+				var documenttypesObject = responseObject['results']
+				for (var iDocType = 0; iDocType < documenttypesObject.length; iDocType++) {
+					documenttypes.set(documenttypesObject[iDocType].name, documenttypesObject[iDocType].id)
+					documenttypesId.set(documenttypesObject[iDocType].id, documenttypesObject[iDocType].name)
+				}
+			}
+			if (nextURL) {
+				request = httpClient.createGetRequest(nextURL);
+				request.addHeader('Authorization', 'Token ' + paperlessToken);
+				response = getResponse(request);
+				if (!response) {
+					nextURL = null;
+				}
+			}
+		} while (nextURL);
+	}
+	httpClient.close();
+}
+
+/**
+ * @properties={typeid:24,uuid:"2E5263C1-B936-4618-AC8E-FC4453305260"}
+ */
+function createData() {
+	var fsCorrespondents = datasources.mem.correspondents.getFoundSet();
+	fsCorrespondents.loadAllRecords();
+	fsCorrespondents.deleteAllRecords();
+	var fsTags = datasources.mem.tags.getFoundSet();
+	fsTags.loadAllRecords();
+	fsTags.deleteAllRecords();
+	var fsDocTypes = datasources.mem.document_types.getFoundSet();
+	fsDocTypes.loadAllRecords();
+	fsDocTypes.deleteAllRecords();
+
+	var listCorrespondents = [{ name: 'Maier GmbH', city: 'Stuttgart', correspondents_id: 1 }, { name: 'Müller & Co.', city: 'München', correspondents_id: 2 }, { name: 'Schmidt AG', city: 'Zürich', correspondents_id: 3 }]
+	for (var i = 0; i < listCorrespondents.length; i++) {
+		var recCorr = fsCorrespondents.getRecord(fsCorrespondents.newRecord());
+		recCorr.name = listCorrespondents[i].name;
+		recCorr.city = listCorrespondents[i].city;
+		recCorr.correspondents_id = listCorrespondents[i].id;
+		databaseManager.saveData(recCorr);
+	}
+	var listTags = [
+		{ name: '🔥🔥🔥', colour: '#26089c', tags_id: 1 },
+		{ name: '☠️☠️☠️', colour: '#26089c', tags_id: 2 },
+		{ name: '⭐', colour: '#26089c', tags_id: 3 },
+		{ name: '⭐⭐', colour: '#26089c', tags_id: 4 },
+		{ name: '⭐⭐⭐', colour: '#26089c', tags_id: 5 }
+	];
+	for (var iTags = 0; iTags < listTags.length; iTags++) {
+		var recTags = fsTags.getRecord(fsTags.newRecord());
+		recTags.colour = listTags[iTags].colour;
+		recTags.name = listTags[iTags].name;
+		recTags.tags_id = listTags[iTags].tags_id;
+		databaseManager.saveData(recTags);
+	}
+	var listDocTypes = [
+		{ name: 'formal letter', document_types_id: 1 },
+		{ name: 'calculation', document_types_id: 2 },
+		{ name: 'information', document_types_id: 3 }
+	];
+	for (var iDocType = 0; iDocType < listDocTypes.length; iDocType++) {
+		var recDocType = fsDocTypes.getRecord(fsDocTypes.newRecord());
+		recDocType.name = listDocTypes[iDocType].name;
+		recDocType.document_types_id = listDocTypes[iDocType].document_types_id;
+		databaseManager.saveData(recDocType);
+	}
+}
+
+/**
+ * @properties={typeid:24,uuid:"F0C76EA2-F542-49D0-AF1B-80429426907D"}
+ */
+function downloadMasterData() {
+	downloadCorrespondents();
+	downloadCustomFieldsPaperless();
+	downloadDocTypes()
+	downloadTags();
+}
+
+/**
+ * @properties={typeid:24,uuid:"4FC05E5C-221D-46DB-9FD0-C256AC0DB0C4"}
+ */
+function uploadMasterData() {
+	downloadMasterData();
+	uploadAllCorrespondets();
+	uploadAllTags();
+	uploadAllDocumentTypes();
+}
+
+/**
+ * @properties={typeid:24,uuid:"5D329390-87F4-44F9-921C-137054D873D5"}
+ */
+function uploadAllTags() {
+	var fsTags = datasources.mem.tags.getFoundSet();
+	fsTags.loadAllRecords();
+	for (var iTags = 1; iTags <= fsTags.getSize(); iTags++) {
+		var recordTag = fsTags.getRecord(iTags);
+		if (tags.has(recordTag.name)) {
+			continue;
+		}
+		uploadTag(recordTag.name, recordTag.colour);
+	}
+}
+
+/**
+ * upload tag to paperless
+ * @param {String} name
+ * @param {String} colour
+ * @properties={typeid:24,uuid:"113DC48D-3669-449B-B32E-83589650C1DC"}
+ */
+function uploadTag(name, colour) {
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+
+	/**
+	 * @param {String} name
+	 * @param {String} colour
+	 * @return {Object}
+	 * @properties={typeid:24,uuid:"E2DF7587-3BF6-41CD-A74E-FCC9EB322A31"}
+	 */
+	function getObjectTag(name, colour) {
+		if (!name) {
+			return null
+		}
+		var hexColor = "#7ad8dd";
+		if (colour) {
+			hexColor = colour;
+		}
+		return objectTag = {
+		    "name": name,
+		    "color": hexColor,
+		    "match": name,
+		    "matching_algorithm": 6,
+		    "is_insensitive": true,
+		    "is_inbox_tag": false,
+		    "owner": null,
+		    "set_permissions": {}
+		};
+	}
+
+	var objectTag = getObjectTag(name, colour);
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var url = paperlessServerUrl + ENDPOINTS.tags;
+	var request = httpClient.createPostRequest(url);
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	request.addHeader('Content-Type', 'application/json');
+	request.setBodyContent(JSON.stringify(objectTag));
+	var response = getResponse(request);
+	httpClient.close();
+	if (!response) {
+		return;
+	}
+	var responseObject = JSON.parse(response);
+	if (responseObject && responseObject.hasOwnProperty('id')) {
+		/** @type {Number} */
+		var id = responseObject['id'];
+		tags.set(name,id);
+		tagsId.set(id, name);
+	}
+}
+
+/**
+ * @properties={typeid:24,uuid:"2D0E8D7B-CD9C-4818-BE4E-3A4BCB20E303"}
+ */
+function uploadAllDocumentTypes() {
+	var fsDokumentTypen = datasources.mem.document_types.getFoundSet();
+	fsDokumentTypen.loadAllRecords();
+	for (var iDT = 1; iDT <= fsDokumentTypen.getSize(); iDT++) {
+		var recordDokumentTyp = fsDokumentTypen.getRecord(iDT);
+		if (documenttypes.has(recordDokumentTyp.name)) {
+			continue;
+		}
+		uploadDocumentType(recordDokumentTyp.name);
+	}
+}
+
+/**
+ * upload DocumentType to paperless
+ * @param {String} bezeichnung
+ * @return {Number} id of created document type
+ *
+ * @properties={typeid:24,uuid:"B60E0A2A-921F-4BFD-810B-EF19B256B493"}
+ */
+function uploadDocumentType(bezeichnung) {
+	if (!bezeichnung) {
+		return null;
+	}
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var url = paperlessServerUrl + ENDPOINTS.document_types;
+	var request = httpClient.createPostRequest(url);
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	request.addHeader('Content-Type', 'application/json');
+	request.setBodyContent(JSON.stringify({
+		"name": bezeichnung,
+		"match": bezeichnung,
+		"matching_algorithm": 6,
+		"is_insensitive": false,
+		"owner": null,
+		"set_permissions": { }
+	}));
+
+	var response = getResponse(request);
+	httpClient.close();
+	if (!response) {
+		return null;
+	}
+	var responseObject = JSON.parse(response);
+	if (responseObject && responseObject.hasOwnProperty('id')) {
+		/** @type {Number} */
+		var id = responseObject['id'];
+		logger.info('DocumentType mit id: ' + id.toString() + ' erstellt.');
+		documenttypes.set(bezeichnung, id);
+		documenttypesId.set(id, bezeichnung);
+		return id;
+	}
+	return null;
+}
+
+/**
+ * checks if a custom field with the name exists,
+ * if not creates a field with the given name + the given type.
+ * if no type is given "string" is used as a default
+ *
+ * @param {String} fieldName name of field to be shown in paperless
+ * @param {String} [fieldType] name of field to be shown in paperless
+ *
+ * @properties={typeid:24,uuid:"20DEA520-837D-416C-8BA5-337495C5BAE8"}
+ */
+function uploadCustomField(fieldName, fieldType) {
+	if (!fieldName) {
+		return;
+	}
+	if (customFieldsPaperless.has(fieldName)) {
+		return;
+	}
+	if (!fieldType || fieldType == FIELDTYPES.SELECT) {
+		// first create select fields as string an change via patch later
+		fieldType = FIELDTYPES.STRING;
+	}
+	var objectField = {
+		name: fieldName,
+		data_type: fieldType,
+	}
+	// Upload
+	var idPaperless = null;
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var url = paperlessServerUrl + ENDPOINTS.custom_fields;
+	var request = httpClient.createPostRequest(url);
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	request.addHeader('Content-Type', 'application/json');
+	request.setBodyContent(JSON.stringify(objectField));
+	var response = getResponse(request);
+	httpClient.close();
+	if (!response) {
+		return;
+	}
+	/** @type {{id: Number, name: String, data_type: String, extra_data}} */
+	var responseObject = JSON.parse(response);
+	if (responseObject && responseObject.hasOwnProperty('id')) {
+		customFieldsPaperless.set(fieldName, responseObject['id']);
+	}
+	downloadCustomFieldsPaperless()
+}
+
+/**
+ * checks if a custom field with the name exists,
+ * if not creates a field with the given name + the given type.
+ * if no type is given "string" is used as a default
+ *
+ * @param {String} fieldName name of field to be shown in paperless
+ * @param {String} tableName name of tabel used for select values
+ *
+ * @properties={typeid:24,uuid:"474091AF-7254-4C31-97D6-D8B7FDA314B5"}
+ */
+function uploadCustomFieldSelect(fieldName, tableName) {
+	downloadCustomFieldsPaperless();
+	/**
+	 * @param {{label: String}} a
+	 * @param {{label: String}} b
+	 * @return {Number}
+	 * */
+	function sortList(a,b) {
+		if (a.label > b.label) {
+			return 1;
+		} else if (a.label < b.label) {
+			return -1
+		}
+		return 0;
+	}
+
+	if (!fieldName || !tableName) {
+		return;
+	}
+	if (!customFieldsPaperless.has(fieldName)) {
+		uploadCustomField(fieldName, FIELDTYPES.SELECT);
+	}
+
+	var variableName = 'paperless' + fieldName.replace('ä','ae');
+	var fsCustomFieldData = databaseManager.getFoundSet('bauprocheck',tableName);
+	/** @type [{label: String, id: String}] */
+	var listSelectOptions = []
+	fsCustomFieldData.loadAllRecords();
+	for (var iC = 1; iC <= fsCustomFieldData.getSize(); iC++) {
+		var record = fsCustomFieldData.getRecord(iC);
+		var name = ''
+		if (tableName == 'projekte') {
+			name = record['schluessel_bezeichnung_trenner'];
+		} else if (tableName == 'firmen') {
+			name = record['firma_plus_ort'];
+		} else if (tableName == 'personen') {
+			name = record['anzeige_name'];
+		} else if (tableName == 'projekte') {
+			name = record['schluessel_bezeichnung_trenner'];
+		} else if (tableName == 'auftraege') {
+			name = record['info_projekt'];
+		} else if (tableName == 'vz_gewerke') {
+			name = record['bezeichnung'] + ' (' + record['gewerk_kuerzel'] + ')';
+		} else if (tableName == 'vz_ebenen') {
+			name = record['anzeige_ebene'];
+		} else if (tableName == 'raumbuch') {
+			name = record['projekt_schluessel'] + ' -- ' + record['anzeige_raumbuch'];
+		} else {
+			name = record['bezeichnung'] + ' (' + record['kuerzel'] + ')';
+		}
+		if (!scopes.paperless[variableName].has(name)) {
+//			logger.debug('Feld Fehlt: ' + name);
+			listSelectOptions.push({label: name});
+		} else {
+			var id = scopes.paperless[variableName].get(name);
+//			logger.debug('Feld vorhanden: ' + name + ' - Id: ' + id);
+			listSelectOptions.push({label: name, id: id});
+		}
+	}
+	listSelectOptions.sort(sortList);
+//	logger.debug(JSON.stringify(listSelectOptions));
+	var paperlessFieldId = customFieldsPaperless.get(fieldName);
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+	var customFieldObject = {
+		"extra_data": {
+			"select_options": listSelectOptions
+		},
+		"data_type": "select"
+	}
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var urlPatch = paperlessServerUrl + ENDPOINTS.custom_fields + paperlessFieldId.toString() + '/';
+	var request = httpClient.createPatchRequest(urlPatch)
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	request.setBodyContent(JSON.stringify(customFieldObject),'application/json');
+	var response = getResponse(request);
+	httpClient.close();
+	if (!response) {
+		logger.error('problem updating field: ' + JSON.stringify(customFieldObject));
+	}
+	downloadCustomFieldsPaperless()
+//	logger.debug('upload ' + fieldName + ' complete.')
+}
+
+
+/**
+ * @param {Array<byte>} bytes
+ * @param {String} fileName
+ * @param {Date} [fileDate]
+ * @param {JSRecord<db:/bauprocheck/dokumente>} recordDokument
+ * @param {JSRecord<db:/bauprocheck/tagebuch>} recordTagebuch
+ * @properties={typeid:24,uuid:"E0D9F6CA-50F0-44DE-B025-0147CE6E9A37"}
+ */
+function uploadDokumentPaperless(bytes, fileName, fileDate, recordDokument, recordTagebuch) {
+	if (!bytes || !fileName) {
+		return;
+	}
+	if (!fileDate) {
+		fileDate = new Date();
+	}
+	if (utils.hasRecords(scopes.BauProCheckDefaults.benutzer.benutzer_to_kunden)) {
+		setupPaperlessVariables(scopes.BauProCheckDefaults.benutzer.benutzer_to_kunden.getRecord(1));
+	} else {
+		return;
+	}
+	if (paperlessAlleStammdaten) {
+		// Alles direkt laden....
+		uploadAlleStammdaten()
+	} else {
+		// Stammdaten laden zur Übergabe....
+		downloadCorrespondents();
+		downloadDocTypes();
+		downloadTags();
+		uploadAllCustomFields()
+	}
+	var extension = 'dat';
+	var baseName = 'temp';
+	var nameParts = fileName.split('.');
+	if (nameParts.length >= 2) {
+		extension = '.' + nameParts.pop();
+		baseName = nameParts.join('.');
+	}
+	baseName = scopes.Vorlagen.dateiNameBereinigen(baseName,true)
+	var tempFile = plugins.file.createTempFile(baseName,extension);
+	if (tempFile.setBytes(bytes, true)) {
+		logger.debug('created file: ' + tempFile.getAbsolutePath());
+	} else {
+		logger.error('could not create file.');
+		return;
+	}
+
+	/** @type {Array<{field: Number, value: String}>} */
+	var customFieldsList = getCustomFieldDataForRecord(recordTagebuch);
+
+	if (!httpConfig) {
+		setHTTPConfig();
+	}
+	var httpClient = plugins.http.createNewHttpClient(httpConfig);
+	var url = paperlessServerUrl + '/api/documents/post_document/';
+	var request = httpClient.createPostRequest(url);
+	request.addHeader('Authorization', 'Token ' + paperlessToken);
+	request.forceMultipart(true);
+	var success = request.addFile('document', tempFile);
+	if (!success) {
+		logger.error('Error adding file.', LOGGINGLEVEL.ERROR);
+		return;
+	}
+	var teileTitel = [];
+	var correspondentId;
+	var dokumentTypId;
+	var tagIds = [];
+	if (recordTagebuch) {
+		correspondentId = getFirmenPersonenIdPaperless(recordTagebuch);
+		tagIds = getTagIdsPaperless(recordTagebuch);
+		if (recordTagebuch.kurztext) {
+			teileTitel.push(recordTagebuch.kurztext);
+		}
+		if (recordTagebuch.bezeichnung) {
+			teileTitel.push(recordTagebuch.bezeichnung);
+		}
+	}
+	teileTitel.push(fileName)
+	request.addParameter('title', teileTitel.join(' - '));
+	if (correspondentId) {
+		request.addParameter('correspondent', correspondentId.toString());
+	}
+	if (recordDokument) {
+		dokumentTypId = getDokumenteTypIdPaperless(recordDokument)
+		if (dokumentTypId) {
+			request.addParameter('document_type',dokumentTypId.toString());
+		}
+	}
+	if (tagIds) {
+		for (var iTags = 0; iTags < tagIds.length; iTags++) {
+			request.addParameter('tags', tagIds[iTags].toString());
+		}
+	}
+
+	request.addParameter('created', utils.dateFormat(fileDate, 'yyyy-MM-dd HH:mm:ss'));
+	var response = getResponse(request);
+	tempFile.deleteFile();
+	httpClient.close();
+	if (response) {
+		var fsDokumentPaperless = datasources.db.bauprocheck.paperless_dokumente.getFoundSet();
+		var recordInfo = fsDokumentPaperless.getRecord(fsDokumentPaperless.newRecord());
+		recordInfo.dateiname = fileName;
+		recordInfo.datum_stand_dokument = fileDate;
+		if (recordDokument) {
+			recordInfo.dokumente_id = recordDokument.dokumente_id
+			recordInfo.dokumente_fw_id = recordDokument.fw_document_id
+		}
+		recordInfo.upload_time = new Date ();
+		recordInfo.paperless_task_id = response;
+		recordInfo.stammdaten_upload = JSON.stringify(customFieldsList);
+		databaseManager.saveData(recordInfo);
+	}
+}
