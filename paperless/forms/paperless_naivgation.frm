@@ -39,6 +39,11 @@ text:"Master Data"
 containedForm:"05567D78-950A-4E55-9FB7-56F2039114CE",
 svyUUID:"125A1D9A-D0C7-4252-99B2-E5083B9E0B68",
 text:"Master Data Upload"
+},
+{
+containedForm:"16B61D02-4B03-450C-AE75-63182C4FAF3D",
+svyUUID:"E2558E1E-4C9E-4DAF-9AF1-20393B9347DA",
+text:"Upload Documents"
 }
 ]
 },

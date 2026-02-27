@@ -518,7 +518,6 @@ function downloadCorrespondents() {
 				for (var iCorr = 0; iCorr < correspondentObject.length; iCorr++) {
 					correspondents.set(correspondentObject[iCorr].name, correspondentObject[iCorr].id)
 					correspondentsId.set(correspondentObject[iCorr].id, correspondentObject[iCorr].name)
-					logger.debug(correspondentObject[iCorr].name);
 				}
 			}
 			if (nextURL) {
@@ -623,13 +622,10 @@ function downloadDocTypes() {
  */
 function createData() {
 	var fsCorrespondents = datasources.mem.correspondents.getFoundSet();
-	fsCorrespondents.loadAllRecords();
 	fsCorrespondents.deleteAllRecords();
 	var fsTags = datasources.mem.tags.getFoundSet();
-	fsTags.loadAllRecords();
 	fsTags.deleteAllRecords();
 	var fsDocTypes = datasources.mem.document_types.getFoundSet();
-	fsDocTypes.loadAllRecords();
 	fsDocTypes.deleteAllRecords();
 
 	var listCorrespondents = [{ name: 'Maier GmbH', city: 'Stuttgart', correspondents_id: 1 }, { name: 'Müller & Co.', city: 'München', correspondents_id: 2 }, { name: 'Schmidt AG', city: 'Zürich', correspondents_id: 3 }]
@@ -665,6 +661,53 @@ function createData() {
 		recDocType.document_types_id = listDocTypes[iDocType].document_types_id;
 		databaseManager.saveData(recDocType);
 	}
+}
+
+/**
+ * @properties={typeid:24,uuid:"63285198-4F78-410E-9CF3-8A529824CEC8"}
+ */
+function createDocuments() {
+	var fsDocuments = datasources.mem.documents.getFoundSet();
+	fsDocuments.deleteAllRecords();
+
+	var recDocs= fsDocuments.getRecord(fsDocuments.newRecord());
+	recDocs.document_name = 'Document 01';
+	recDocs.document_description = 'new important Document - Document 01';
+	recDocs.document_filename = 'Document_01.pdf';
+	var file = plugins.file.convertToRemoteJSFile('/Users/robertedelmann/git/dsug_2026-02/paperless/medias/Document_01.pdf');
+	if (file && file.getBytes()) {
+		recDocs.document_binary = file.getBytes();
+	}
+//	recDocs.document_binary = plugins.http.getMediaData("media:///Document_01.pdf");
+	recDocs.correspondents_id = 1;
+	recDocs.document_types_id = 1;
+	recDocs.tags_id = 1;
+	recDocs= fsDocuments.getRecord(fsDocuments.newRecord());
+	recDocs.document_name = 'Document 02';
+	recDocs.document_description = 'new important Document - Document 02';
+	recDocs.document_filename = 'Document_02.pdf';
+	var file = plugins.file.convertToRemoteJSFile('/Users/robertedelmann/git/dsug_2026-02/paperless/medias/Document_02.pdf');
+	if (file && file.exists()) {
+		recDocs.document_binary = file.getBytes();
+	}
+//	recDocs.document_binary = plugins.http.getMediaData("media:///Document_02.pdf");
+	recDocs.correspondents_id = 2;
+	recDocs.document_types_id = 2;
+	recDocs.tags_id = 2;
+	databaseManager.saveData(fsDocuments);
+	recDocs= fsDocuments.getRecord(fsDocuments.newRecord());
+	recDocs.document_name = 'Document 03';
+	recDocs.document_description = 'new important Document - Document 03';
+	recDocs.document_filename = 'Document_03.pdf';
+	var file = plugins.file.convertToRemoteJSFile('/Users/robertedelmann/git/dsug_2026-02/paperless/medias/Document_02.pdf');
+	if (file && file.exists()) {
+		recDocs.document_binary = file.getBytes();
+	}
+//	recDocs.document_binary = plugins.http.getMediaData("media:///Document_03.pdf");
+	recDocs.correspondents_id = 3;
+	recDocs.document_types_id = 3;
+	recDocs.tags_id = 3;
+	databaseManager.saveData(fsDocuments);
 }
 
 /**
@@ -964,36 +1007,35 @@ function uploadCustomFieldSelect(fieldName, tableName) {
 //	logger.debug('upload ' + fieldName + ' complete.')
 }
 
+/**
+ * @properties={typeid:24,uuid:"76A4B6A6-7A63-4EDA-945C-83AB7497B498"}
+ */
+function UploadAllDocuments() {
+	var fsDocuments = datasources.mem.documents.getFoundSet();
+	fsDocuments.loadAllRecords();
+	for (var iDoc = 1; iDoc <= fsDocuments.getSize(); iDoc++) {
+		var recDocument = fsDocuments.getRecord(iDoc);
+		uploadDocument(recDocument.document_binary, recDocument.document_filename, recDocument.document_name, recDocument.document_description, recDocument.correspondents_id, recDocument.tags_id, recDocument.document_types_id)
+	}
+}
 
 /**
  * @param {Array<byte>} bytes
  * @param {String} fileName
+ * @param {String} [documentName]
+ * @param {String} [documentDescription]
  * @param {Date} [fileDate]
- * @param {JSRecord<db:/bauprocheck/dokumente>} recordDokument
- * @param {JSRecord<db:/bauprocheck/tagebuch>} recordTagebuch
+ * @param {Number} [correspondentId]
+ * @param {Number} [tagsId]
+ * @param {Number} [documentTypesId]
  * @properties={typeid:24,uuid:"E0D9F6CA-50F0-44DE-B025-0147CE6E9A37"}
  */
-function uploadDokumentPaperless(bytes, fileName, fileDate, recordDokument, recordTagebuch) {
+function uploadDocument(bytes, fileName, documentName, documentDescription, fileDate, correspondentId, tagsId, documentTypesId) {
 	if (!bytes || !fileName) {
 		return;
 	}
 	if (!fileDate) {
 		fileDate = new Date();
-	}
-	if (utils.hasRecords(scopes.BauProCheckDefaults.benutzer.benutzer_to_kunden)) {
-		setupPaperlessVariables(scopes.BauProCheckDefaults.benutzer.benutzer_to_kunden.getRecord(1));
-	} else {
-		return;
-	}
-	if (paperlessAlleStammdaten) {
-		// Alles direkt laden....
-		uploadAlleStammdaten()
-	} else {
-		// Stammdaten laden zur Übergabe....
-		downloadCorrespondents();
-		downloadDocTypes();
-		downloadTags();
-		uploadAllCustomFields()
 	}
 	var extension = 'dat';
 	var baseName = 'temp';
@@ -1002,17 +1044,19 @@ function uploadDokumentPaperless(bytes, fileName, fileDate, recordDokument, reco
 		extension = '.' + nameParts.pop();
 		baseName = nameParts.join('.');
 	}
-	baseName = scopes.Vorlagen.dateiNameBereinigen(baseName,true)
-	var tempFile = plugins.file.createTempFile(baseName,extension);
+	// sanitize name?
+//	var tempFile = plugins.file.createTempFile(baseName,extension);
 	if (tempFile.setBytes(bytes, true)) {
 		logger.debug('created file: ' + tempFile.getAbsolutePath());
 	} else {
 		logger.error('could not create file.');
 		return;
 	}
+	// get Masterdata Server
+	uploadMasterData()
 
 	/** @type {Array<{field: Number, value: String}>} */
-	var customFieldsList = getCustomFieldDataForRecord(recordTagebuch);
+	var customFieldsList = [];
 
 	if (!httpConfig) {
 		setHTTPConfig();
@@ -1022,40 +1066,24 @@ function uploadDokumentPaperless(bytes, fileName, fileDate, recordDokument, reco
 	var request = httpClient.createPostRequest(url);
 	request.addHeader('Authorization', 'Token ' + paperlessToken);
 	request.forceMultipart(true);
-	var success = request.addFile('document', tempFile);
+	var success = request.addFile('document', 'plugins.file.convertToJSFile(fileName)');
 	if (!success) {
 		logger.error('Error adding file.', LOGGINGLEVEL.ERROR);
 		return;
 	}
 	var teileTitel = [];
-	var correspondentId;
-	var dokumentTypId;
-	var tagIds = [];
-	if (recordTagebuch) {
-		correspondentId = getFirmenPersonenIdPaperless(recordTagebuch);
-		tagIds = getTagIdsPaperless(recordTagebuch);
-		if (recordTagebuch.kurztext) {
-			teileTitel.push(recordTagebuch.kurztext);
-		}
-		if (recordTagebuch.bezeichnung) {
-			teileTitel.push(recordTagebuch.bezeichnung);
-		}
-	}
+	teileTitel.push(documentName);
+	teileTitel.push(documentDescription);
 	teileTitel.push(fileName)
 	request.addParameter('title', teileTitel.join(' - '));
 	if (correspondentId) {
 		request.addParameter('correspondent', correspondentId.toString());
 	}
-	if (recordDokument) {
-		dokumentTypId = getDokumenteTypIdPaperless(recordDokument)
-		if (dokumentTypId) {
-			request.addParameter('document_type',dokumentTypId.toString());
-		}
+	if (documentTypesId) {
+		request.addParameter('document_type',documentTypesId.toString());
 	}
-	if (tagIds) {
-		for (var iTags = 0; iTags < tagIds.length; iTags++) {
-			request.addParameter('tags', tagIds[iTags].toString());
-		}
+	if (tagsId) {
+		request.addParameter('tags', tagsId.toString());
 	}
 
 	request.addParameter('created', utils.dateFormat(fileDate, 'yyyy-MM-dd HH:mm:ss'));
@@ -1063,17 +1091,17 @@ function uploadDokumentPaperless(bytes, fileName, fileDate, recordDokument, reco
 	tempFile.deleteFile();
 	httpClient.close();
 	if (response) {
-		var fsDokumentPaperless = datasources.db.bauprocheck.paperless_dokumente.getFoundSet();
-		var recordInfo = fsDokumentPaperless.getRecord(fsDokumentPaperless.newRecord());
-		recordInfo.dateiname = fileName;
-		recordInfo.datum_stand_dokument = fileDate;
-		if (recordDokument) {
-			recordInfo.dokumente_id = recordDokument.dokumente_id
-			recordInfo.dokumente_fw_id = recordDokument.fw_document_id
-		}
-		recordInfo.upload_time = new Date ();
-		recordInfo.paperless_task_id = response;
-		recordInfo.stammdaten_upload = JSON.stringify(customFieldsList);
-		databaseManager.saveData(recordInfo);
+//		var fsDokumentPaperless = datasources.db.bauprocheck.paperless_dokumente.getFoundSet();
+//		var recordInfo = fsDokumentPaperless.getRecord(fsDokumentPaperless.newRecord());
+//		recordInfo.dateiname = fileName;
+//		recordInfo.datum_stand_dokument = fileDate;
+//		if (recordDokument) {
+//			recordInfo.dokumente_id = recordDokument.dokumente_id
+//			recordInfo.dokumente_fw_id = recordDokument.fw_document_id
+//		}
+//		recordInfo.upload_time = new Date ();
+//		recordInfo.paperless_task_id = response;
+//		recordInfo.stammdaten_upload = JSON.stringify(customFieldsList);
+//		databaseManager.saveData(recordInfo);
 	}
 }
