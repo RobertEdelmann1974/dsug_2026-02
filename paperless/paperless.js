@@ -668,45 +668,37 @@ function createData() {
  */
 function createDocuments() {
 	var fsDocuments = datasources.mem.documents.getFoundSet();
+	fsDocuments.loadAllRecords();
 	fsDocuments.deleteAllRecords();
 
 	var recDocs= fsDocuments.getRecord(fsDocuments.newRecord());
 	recDocs.document_name = 'Document 01';
 	recDocs.document_description = 'new important Document - Document 01';
 	recDocs.document_filename = 'Document_01.pdf';
-	var file = plugins.file.convertToRemoteJSFile('/Users/robertedelmann/git/dsug_2026-02/paperless/medias/Document_01.pdf');
-	if (file && file.getBytes()) {
-		recDocs.document_binary = file.getBytes();
-	}
-//	recDocs.document_binary = plugins.http.getMediaData("media:///Document_01.pdf");
+	recDocs.bytes = plugins.http.getMediaData("media:///Document_01.pdf");
 	recDocs.correspondents_id = 1;
 	recDocs.document_types_id = 1;
 	recDocs.tags_id = 1;
-	recDocs= fsDocuments.getRecord(fsDocuments.newRecord());
+	recDocs.document_date = scopes.svyDateUtils.addDays(new Date(),-1);
+	recDocs = fsDocuments.getRecord(fsDocuments.newRecord());
 	recDocs.document_name = 'Document 02';
 	recDocs.document_description = 'new important Document - Document 02';
 	recDocs.document_filename = 'Document_02.pdf';
-	var file = plugins.file.convertToRemoteJSFile('/Users/robertedelmann/git/dsug_2026-02/paperless/medias/Document_02.pdf');
-	if (file && file.exists()) {
-		recDocs.document_binary = file.getBytes();
-	}
-//	recDocs.document_binary = plugins.http.getMediaData("media:///Document_02.pdf");
+	recDocs.bytes = plugins.http.getMediaData("media:///Document_02.pdf");
 	recDocs.correspondents_id = 2;
 	recDocs.document_types_id = 2;
 	recDocs.tags_id = 2;
+	recDocs.document_date = scopes.svyDateUtils.addDays(new Date(),-2);
 	databaseManager.saveData(fsDocuments);
 	recDocs= fsDocuments.getRecord(fsDocuments.newRecord());
 	recDocs.document_name = 'Document 03';
 	recDocs.document_description = 'new important Document - Document 03';
 	recDocs.document_filename = 'Document_03.pdf';
-	var file = plugins.file.convertToRemoteJSFile('/Users/robertedelmann/git/dsug_2026-02/paperless/medias/Document_02.pdf');
-	if (file && file.exists()) {
-		recDocs.document_binary = file.getBytes();
-	}
-//	recDocs.document_binary = plugins.http.getMediaData("media:///Document_03.pdf");
+	recDocs.bytes = plugins.http.getMediaData("media:///Document_03.pdf");
 	recDocs.correspondents_id = 3;
 	recDocs.document_types_id = 3;
 	recDocs.tags_id = 3;
+	recDocs.document_date = scopes.svyDateUtils.addDays(new Date(),-3);
 	databaseManager.saveData(fsDocuments);
 }
 
@@ -1015,7 +1007,7 @@ function UploadAllDocuments() {
 	fsDocuments.loadAllRecords();
 	for (var iDoc = 1; iDoc <= fsDocuments.getSize(); iDoc++) {
 		var recDocument = fsDocuments.getRecord(iDoc);
-		uploadDocument(recDocument.document_binary, recDocument.document_filename, recDocument.document_name, recDocument.document_description, recDocument.correspondents_id, recDocument.tags_id, recDocument.document_types_id)
+		uploadDocument(recDocument.bytes, recDocument.document_filename, recDocument.document_name, recDocument.document_description, recDocument.document_date, recDocument.correspondents_id, recDocument.tags_id, recDocument.document_types_id)
 	}
 }
 
@@ -1045,11 +1037,9 @@ function uploadDocument(bytes, fileName, documentName, documentDescription, file
 		baseName = nameParts.join('.');
 	}
 	// sanitize name?
-//	var tempFile = plugins.file.createTempFile(baseName,extension);
-	if (tempFile.setBytes(bytes, true)) {
-		logger.debug('created file: ' + tempFile.getAbsolutePath());
-	} else {
-		logger.error('could not create file.');
+	var tempFile = plugins.file.createTempFile(baseName,extension);
+	if (!tempFile.setBytes(bytes, true)) {
+		logger.error('could not create temp file for : ' + baseName + '.' + extension);
 		return;
 	}
 	// get Masterdata Server
@@ -1066,7 +1056,7 @@ function uploadDocument(bytes, fileName, documentName, documentDescription, file
 	var request = httpClient.createPostRequest(url);
 	request.addHeader('Authorization', 'Token ' + paperlessToken);
 	request.forceMultipart(true);
-	var success = request.addFile('document', 'plugins.file.convertToJSFile(fileName)');
+	var success = request.addFile('document', plugins.file.convertToJSFile(tempFile));
 	if (!success) {
 		logger.error('Error adding file.', LOGGINGLEVEL.ERROR);
 		return;

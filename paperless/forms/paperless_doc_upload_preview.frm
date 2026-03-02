@@ -20,7 +20,7 @@ right:"0",
 top:"0",
 width:"50"
 },
-dataProviderID:"document_binary"
+dataProviderID:"bytes"
 },
 name:"pdfjsviewer_5",
 typeName:"pdfviewer-pdf-Js-Viewer",
